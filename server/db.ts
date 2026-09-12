@@ -4,21 +4,25 @@ import { botManager } from './botManager.js';
 import fs from 'fs';
 import path from 'path';
 
-// Support user-provided string for this specific context, while encouraging env vars for production
+// Support MONGO_URL (standard on Railway) or MONGODB_URI, with fallback
 const fallbackUri = 'mongodb://mongo:JzjarpNbvBWkKKlJcZTYRPkKHUwtawsf@mongodb.railway.internal:27017';
-const MONGODB_URI = process.env.MONGODB_URI || fallbackUri;
+const MONGODB_URI = process.env.MONGO_URL || process.env.MONGODB_URI || fallbackUri;
 
 let isConnected = false;
 
-// Silence unhandled driver stream errors when host is unreachable
+// Handle Mongoose connection lifecycle events
+mongoose.connection.on('connected', () => {
+  console.log('[MongoDB] Connected successfully to Railway database!');
+});
+
 mongoose.connection.on('error', (err) => {
   if (!isConnected) return; // Suppress background reconnect logs when offline
-  console.warn('[MongoDB] Connection warning:', err?.message || err);
+  console.error('[MongoDB] Connection warning or runtime error:', err?.message || err);
 });
 
 mongoose.connection.on('disconnected', () => {
   if (isConnected) {
-    console.warn('[MongoDB] Connection lost. Reverting to local storage until reconnected.');
+    console.warn('[MongoDB] Disconnected from database. Operating in local storage mode.');
     isConnected = false;
   }
 });
@@ -71,7 +75,7 @@ export async function connectDB() {
       connectTimeoutMS: 2500,
     });
     isConnected = true;
-    console.log('[MongoDB] Successfully connected.');
+    console.log('[MongoDB] Connected successfully to Railway database!');
     
     await syncFromDatabase();
     setupSyncHooks();
@@ -82,7 +86,8 @@ export async function connectDB() {
   } catch (err: any) {
     isConnected = false;
     await mongoose.disconnect().catch(() => {});
-    console.warn('[MongoDB] Host unreachable (railway.internal is accessible when deployed on Railway or with external MONGODB_URI).');
+    console.error('[MongoDB] Connection failed:', err.message || err);
+    console.warn('[MongoDB] Host unreachable (railway.internal is accessible when deployed on Railway or with external MONGO_URL).');
     console.warn('[MongoDB] Operating safely in local file persistence mode.');
   }
 }
