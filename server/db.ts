@@ -72,11 +72,14 @@ export const BotModel = mongoose.models.Bot || mongoose.model('Bot', BotConfigSc
  */
 export async function connectDB() {
   if (isConnected) return;
+  
+  const targetUri = process.env.MONGO_URL || process.env.MONGODB_URI || fallbackUri;
+  
   try {
-    console.log('[MongoDB] 🔄 Connecting to MongoDB database...');
+    console.log('[MongoDB] 🔄 Attempting connection to MongoDB database...');
     
-    await mongoose.connect(MONGO_URL, {
-      family: 0, // Enable dual IPv4 & IPv6 stack resolution to resolve Railway internal DNS (.railway.internal)
+    await mongoose.connect(targetUri, {
+      family: 4, // Force IPv4 resolution for standard Railway MongoDB connections
       serverSelectionTimeoutMS: 3000,
       connectTimeoutMS: 3000,
     });
@@ -93,8 +96,8 @@ export async function connectDB() {
   } catch (err: any) {
     isConnected = false;
     await mongoose.disconnect().catch(() => {});
-    console.error('[MongoDB] ❌ Connection failed:', err?.message || err);
-    console.warn('[MongoDB] ℹ️ Operating safely in local file persistence mode.');
+    console.warn('[MongoDB] ℹ️ Host unreachable or MONGO_URL not present locally.');
+    console.warn('[MongoDB] 📁 Safely operating in local JSON file persistence mode.');
   }
 }
 
