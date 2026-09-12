@@ -1,0 +1,1 @@
+sed -i '/public broadcastPublicStats/i \  public broadcastGlobalNotification(title: string, body: string) {\n    const msg = { event: "admin_notification", data: { title, body }, timestamp: Date.now() };\n    for (const [userId, set] of this.sseClients.entries()) {\n      for (const client of set) {\n        client(msg);\n      }\n    }\n  }\n' server/botManager.ts
