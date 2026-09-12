@@ -68,7 +68,8 @@ export const SessionModel = mongoose.models.Session || mongoose.model('Session',
 export const BotModel = mongoose.models.Bot || mongoose.model('Bot', BotConfigSchema);
 
 /**
- * Connects to MongoDB with family: 0 option for Railway IPv6/IPv4 dual-stack DNS resolution.
+ * Connects to MongoDB at runtime (when Express starts listening) using standard driver options.
+ * Non-blocking: Catch connection errors cleanly and fall back to local JSON file storage if offline.
  */
 export async function connectDB() {
   if (isConnected) return;
@@ -76,12 +77,12 @@ export async function connectDB() {
   const targetUri = process.env.MONGO_URL || process.env.MONGODB_URI || fallbackUri;
   
   try {
-    console.log('[MongoDB] 🔄 Attempting connection to MongoDB database...');
+    console.log('[MongoDB] 🔄 Connecting to database using process.env.MONGO_URL...');
     
+    // Standard driver options without restrictive or invalid family options
     await mongoose.connect(targetUri, {
-      family: 4, // Force IPv4 resolution for standard Railway MongoDB connections
-      serverSelectionTimeoutMS: 3000,
-      connectTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
     });
 
     isConnected = true;
@@ -96,8 +97,8 @@ export async function connectDB() {
   } catch (err: any) {
     isConnected = false;
     await mongoose.disconnect().catch(() => {});
-    console.warn('[MongoDB] ℹ️ Host unreachable or MONGO_URL not present locally.');
-    console.warn('[MongoDB] 📁 Safely operating in local JSON file persistence mode.');
+    console.error('[MongoDB] ❌ Connection failed:', err?.message || err);
+    console.warn('[MongoDB] 📁 Safely operating in local JSON file persistence mode (host unreachable or MONGO_URL not present).');
   }
 }
 

@@ -123,7 +123,6 @@ process.on('unhandledRejection', (reason) => {
 });
 
 async function startServer() {
-  await connectDB();
   const app = express();
   const server = http.createServer(app);
 
@@ -826,6 +825,11 @@ async function startServer() {
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`Ninimo 24/7 server running on http://0.0.0.0:${PORT}`);
+
+    // Trigger runtime MongoDB connection asynchronously after HTTP server starts listening
+    connectDB().catch((err) => {
+      console.error('[MongoDB] Runtime connection error:', err?.message || err);
+    });
 
     // Server-wide memory watchdog: prevents Cloud Run container OOM kills
     setInterval(() => {
