@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 
 // Support user-provided string for this specific context, while encouraging env vars for production
-const fallbackUri = 'mongodb://mongo:gTCjfWKQvmbNoSgtPnoWHlxofIdVbCZn@mongodb.railway.internal:27017';
+const fallbackUri = 'mongodb://mongo:JzjarpNbvBWkKKlJcZTYRPkKHUwtawsf@mongodb.railway.internal:27017';
 const MONGODB_URI = process.env.MONGODB_URI || fallbackUri;
 
 let isConnected = false;
