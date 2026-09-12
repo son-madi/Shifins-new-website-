@@ -2,8 +2,15 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
-const USERS_FILE = path.join(process.cwd(), 'users.json');
-const SESSIONS_FILE = path.join(process.cwd(), 'sessions.json');
+const DATA_DIR = path.join(process.cwd(), 'data');
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+const LEGACY_USERS_FILE = path.join(process.cwd(), 'users.json');
+const LEGACY_SESSIONS_FILE = path.join(process.cwd(), 'sessions.json');
 
 // Block known throwaway & disposable email domains
 const DISPOSABLE_DOMAINS = new Set([
@@ -97,7 +104,7 @@ class AuthManager {
   }
 
   private loadUsers() {
-    const filesToTry = [USERS_FILE, `${USERS_FILE}.backup`];
+    const filesToTry = [USERS_FILE, `${USERS_FILE}.backup`, LEGACY_USERS_FILE];
     for (const file of filesToTry) {
       if (fs.existsSync(file)) {
         try {
@@ -136,7 +143,7 @@ class AuthManager {
   }
 
   private loadSessions() {
-    const filesToTry = [SESSIONS_FILE, `${SESSIONS_FILE}.backup`];
+    const filesToTry = [SESSIONS_FILE, `${SESSIONS_FILE}.backup`, LEGACY_SESSIONS_FILE];
     for (const file of filesToTry) {
       if (fs.existsSync(file)) {
         try {

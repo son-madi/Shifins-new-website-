@@ -4,8 +4,15 @@ import { EventEmitter } from 'events';
 import { BotConfig, BotState, GlobalStats, PublicPlatformStats } from '../src/types.js';
 import { BotInstance } from './botInstance.js';
 
-const CONFIG_FILE = path.join(process.cwd(), 'bot-configs.json');
-const SETTINGS_FILE = path.join(process.cwd(), 'system-settings.json');
+const DATA_DIR = path.join(process.cwd(), 'data');
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const CONFIG_FILE = path.join(DATA_DIR, 'bot-configs.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'system-settings.json');
+const LEGACY_CONFIG_FILE = path.join(process.cwd(), 'bot-configs.json');
+const LEGACY_SETTINGS_FILE = path.join(process.cwd(), 'system-settings.json');
 
 export interface SystemSettings {
   globalBotLimit: number;
@@ -47,7 +54,7 @@ export class BotManager extends EventEmitter {
   }
 
   private loadSettings() {
-    const filesToTry = [SETTINGS_FILE, `${SETTINGS_FILE}.backup`];
+    const filesToTry = [SETTINGS_FILE, `${SETTINGS_FILE}.backup`, LEGACY_SETTINGS_FILE];
     for (const file of filesToTry) {
       if (fs.existsSync(file)) {
         try {
@@ -120,7 +127,7 @@ export class BotManager extends EventEmitter {
 
   private loadSavedConfigs() {
     let configs: BotConfig[] = [];
-    const filesToTry = [CONFIG_FILE, `${CONFIG_FILE}.backup`];
+    const filesToTry = [CONFIG_FILE, `${CONFIG_FILE}.backup`, LEGACY_CONFIG_FILE];
     for (const file of filesToTry) {
       if (fs.existsSync(file)) {
         try {

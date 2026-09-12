@@ -8,7 +8,6 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { botManager } from './server/botManager.js';
 import { authManager } from './server/auth.js';
-import { connectDB } from './server/db.js';
 
 // Lazy Gemini client initialization
 let geminiClient: GoogleGenAI | null = null;
@@ -825,11 +824,6 @@ async function startServer() {
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`Ninimo 24/7 server running on http://0.0.0.0:${PORT}`);
-
-    // Trigger runtime MongoDB connection asynchronously after HTTP server starts listening
-    connectDB().catch((err) => {
-      console.error('[MongoDB] Runtime connection error:', err?.message || err);
-    });
 
     // Server-wide memory watchdog: prevents Cloud Run container OOM kills
     setInterval(() => {
