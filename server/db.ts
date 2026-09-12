@@ -10,6 +10,19 @@ const MONGODB_URI = process.env.MONGODB_URI || fallbackUri;
 
 let isConnected = false;
 
+// Silence unhandled driver stream errors when host is unreachable
+mongoose.connection.on('error', (err) => {
+  if (!isConnected) return; // Suppress background reconnect logs when offline
+  console.warn('[MongoDB] Connection warning:', err?.message || err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  if (isConnected) {
+    console.warn('[MongoDB] Connection lost. Reverting to local storage until reconnected.');
+    isConnected = false;
+  }
+});
+
 // Schemas
 const UserSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
@@ -54,7 +67,8 @@ export async function connectDB() {
   try {
     console.log('[MongoDB] Connecting to database...');
     await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 2500,
+      connectTimeoutMS: 2500,
     });
     isConnected = true;
     console.log('[MongoDB] Successfully connected.');
@@ -66,9 +80,10 @@ export async function connectDB() {
     // @ts-ignore
     botManager.performHealthCheck();
   } catch (err: any) {
-    console.warn('[MongoDB] Failed to connect.');
-    console.warn('Note: If you are using a railway.internal URL, it is ONLY accessible from within Railway. The AI Studio preview cannot reach it. Falling back to local file storage.');
-    console.warn(`[MongoDB] Error: ${err.message}`);
+    isConnected = false;
+    await mongoose.disconnect().catch(() => {});
+    console.warn('[MongoDB] Host unreachable (railway.internal is accessible when deployed on Railway or with external MONGODB_URI).');
+    console.warn('[MongoDB] Operating safely in local file persistence mode.');
   }
 }
 
@@ -151,6 +166,7 @@ function setupSyncHooks() {
   // @ts-ignore
   authManager.saveUsers = function() {
     origSaveUsers();
+    if (!isConnected) return;
     (async () => {
       try {
         // @ts-ignore
@@ -168,6 +184,7 @@ function setupSyncHooks() {
   // @ts-ignore
   authManager.saveSessions = function() {
     origSaveSessions();
+    if (!isConnected) return;
     (async () => {
       try {
         // @ts-ignore
@@ -184,7 +201,7 @@ function setupSyncHooks() {
   // @ts-ignore
   authManager.deleteUser = function(targetUserId) {
     const res = origDeleteUser(targetUserId);
-    if (res) {
+    if (res && isConnected) {
       (async () => {
         try {
           await UserModel.deleteOne({ id: targetUserId });
@@ -201,6 +218,7 @@ function setupSyncHooks() {
   // @ts-ignore
   botManager.saveConfigs = function() {
     origSaveConfigs();
+    if (!isConnected) return;
     (async () => {
       try {
         // @ts-ignore
@@ -217,7 +235,7 @@ function setupSyncHooks() {
   // @ts-ignore
   botManager.deleteBot = function(userId, botId) {
     const res = origDeleteBot(botId, userId);
-    if (res) {
+    if (res && isConnected) {
       (async () => {
         try {
           await BotModel.deleteOne({ id: botId, userId });
